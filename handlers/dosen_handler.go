@@ -186,43 +186,43 @@ func HapusDosen(c *gin.Context) {
 }
 
 func RekamSuaraDosen(c *gin.Context) {
-	// Untuk rekaman live, kita akan terima file audio yang sudah direkam
-	file, err := c.FormFile("audio_data")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File audio wajib diupload"})
-		return
-	}
+    // Untuk rekaman live dari microphone
+    file, err := c.FormFile("audio_data")
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Data audio wajib diupload"})
+        return
+    }
 
-	dosenID := c.Param("id")
-	
-	// Validasi size file
-	if file.Size > MaxUploadSize {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File terlalu besar. Maksimal 10MB"})
-		return
-	}
+    dosenID := c.Param("id")
+    
+    // Validasi size file
+    if file.Size > MaxUploadSize {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "File terlalu besar. Maksimal 10MB"})
+        return
+    }
 
-	// Simpan file audio
-	pathSampleSuara, err := utils.SaveAudioFile(file, AudioUploadDir)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Gagal menyimpan file audio: %v", err)})
-		return
-	}
+    // Simpan file audio
+    pathSampleSuara, err := utils.SaveAudioFile(file, AudioUploadDir)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Gagal menyimpan file audio: %v", err)})
+        return
+    }
 
-	// Update path sample suara dosen
-	db := database.GetDB()
-	result := db.Model(&models.Dosen{}).Where("id = ?", dosenID).Update("path_sample_suara", pathSampleSuara)
-	if result.Error != nil {
-		// Hapus file yang sudah diupload jika gagal update database
-		utils.DeleteAudioFile(pathSampleSuara)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
-		return
-	}
+    // Update path sample suara dosen
+    db := database.GetDB()
+    result := db.Model(&models.Dosen{}).Where("id = ?", dosenID).Update("path_sample_suara", pathSampleSuara)
+    if result.Error != nil {
+        // Hapus file yang sudah diupload jika gagal update database
+        utils.DeleteAudioFile(pathSampleSuara)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+        return
+    }
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Sample suara dosen berhasil disimpan",
-		"path":    pathSampleSuara,
-		"dosen_id": dosenID,
-	})
+    c.JSON(http.StatusOK, gin.H{
+        "message": "Sample suara dosen berhasil disimpan",
+        "path":    pathSampleSuara,
+        "dosen_id": dosenID,
+    })
 }
 
 // Handler untuk serve file audio
@@ -245,3 +245,4 @@ func ServeAudioFile(c *gin.Context) {
 	// Serve file
 	c.File(filePath)
 }
+

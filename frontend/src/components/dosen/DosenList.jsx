@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit2, Trash2, Mic, Play,Users } from 'lucide-react';
+import { Edit2, Trash2, Mic, Play, Users, Volume2 } from 'lucide-react';
 import { dosenAPI } from '../../services/api';
 import RekamSuaraModal from './RekamSuaraModal';
 
@@ -7,6 +7,7 @@ export default function DosenList({ dosen, onEdit, onUpdate }) {
   const [showRekamModal, setShowRekamModal] = useState(false);
   const [selectedDosen, setSelectedDosen] = useState(null);
   const [loading, setLoading] = useState(null);
+  const [playingAudio, setPlayingAudio] = useState(null);
 
   const handleDelete = async (id) => {
     if (!confirm('Apakah Anda yakin ingin menghapus dosen ini?')) return;
@@ -27,11 +28,29 @@ export default function DosenList({ dosen, onEdit, onUpdate }) {
     setShowRekamModal(true);
   };
 
-  const playSampleSuara = (dosen) => {
+  const playSampleSuara = async (dosen) => {
+    if (playingAudio === dosen.id) {
+      setPlayingAudio(null);
+      return;
+    }
+
     if (dosen.path_sample_suara) {
-      const audioUrl = `http://localhost:8080/api/v1/audio/${dosen.path_sample_suara.split('/').pop()}`;
-      const audio = new Audio(audioUrl);
-      audio.play();
+      setPlayingAudio(dosen.id);
+      try {
+        const audioUrl = `http://localhost:8080/api/v1/audio/${dosen.path_sample_suara.split('/').pop()}`;
+        const audio = new Audio(audioUrl);
+        
+        audio.onended = () => setPlayingAudio(null);
+        audio.onerror = () => {
+          setPlayingAudio(null);
+          alert('Gagal memutar sample suara');
+        };
+        
+        await audio.play();
+      } catch (err) {
+        setPlayingAudio(null);
+        alert('Gagal memutar sample suara');
+      }
     }
   };
 
@@ -39,9 +58,9 @@ export default function DosenList({ dosen, onEdit, onUpdate }) {
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {dosen.map((d) => (
-          <div key={d.id} className="card">
+          <div key={d.id} className="card hover:shadow-lg transition-shadow duration-200">
             <div className="flex justify-between items-start mb-3">
-              <div>
+              <div className="flex-1">
                 <h3 className="font-semibold text-lg text-gray-800">{d.nama}</h3>
                 <p className="text-gray-600">{d.gelar}</p>
               </div>
@@ -49,23 +68,31 @@ export default function DosenList({ dosen, onEdit, onUpdate }) {
                 {d.path_sample_suara && (
                   <button
                     onClick={() => playSampleSuara(d)}
-                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                    title="Putar Sample Suara"
+                    className={`p-2 rounded-lg transition-colors ${
+                      playingAudio === d.id 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'text-green-600 hover:bg-green-50'
+                    }`}
+                    title={playingAudio === d.id ? "Menghentikan..." : "Putar Sample Suara"}
                   >
-                    <Play className="h-4 w-4" />
+                    {playingAudio === d.id ? (
+                      <Volume2 className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
                   </button>
                 )}
                 <button
                   onClick={() => handleRekamSuara(d)}
                   className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="Rekam Suara"
+                  title="Rekam Suara Baru"
                 >
                   <Mic className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => onEdit(d)}
                   className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                  title="Edit"
+                  title="Edit Data Dosen"
                 >
                   <Edit2 className="h-4 w-4" />
                 </button>
@@ -73,18 +100,24 @@ export default function DosenList({ dosen, onEdit, onUpdate }) {
                   onClick={() => handleDelete(d.id)}
                   disabled={loading === d.id}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                  title="Hapus"
+                  title="Hapus Dosen"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
             
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 mb-2">
               {d.path_sample_suara ? (
-                <span className="text-green-600">✓ Sample suara tersedia</span>
+                <span className="text-green-600 flex items-center">
+                  <Volume2 className="h-3 w-3 mr-1" />
+                  Sample suara tersedia
+                </span>
               ) : (
-                <span className="text-orange-600">✗ Belum ada sample suara</span>
+                <span className="text-orange-600 flex items-center">
+                  <Mic className="h-3 w-3 mr-1" />
+                  Belum ada sample suara
+                </span>
               )}
             </div>
             

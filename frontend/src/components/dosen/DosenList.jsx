@@ -37,7 +37,7 @@ export default function DosenList({ dosen, onEdit, onUpdate }) {
     if (dosen.path_sample_suara) {
       setPlayingAudio(dosen.id);
       try {
-        const audioUrl = `http://localhost:8080/api/v1/audio/${dosen.path_sample_suara.split('/').pop()}`;
+        const audioUrl = `http://localhost:8080/api/v1/${dosen.path_sample_suara.split('/').pop()}`;
         const audio = new Audio(audioUrl);
         
         audio.onended = () => setPlayingAudio(null);

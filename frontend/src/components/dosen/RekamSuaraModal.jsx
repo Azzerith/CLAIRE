@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Upload, Circle } from 'lucide-react';
+import { Mic, Square, Circle, Upload, Volume2, ChevronDown, ChevronUp } from 'lucide-react';
 import { dosenAPI, APP_CONFIG } from '../../services/api';
 
 export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
@@ -9,10 +9,36 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
   const [error, setError] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [currentLine, setCurrentLine] = useState(0);
+  const [showScript, setShowScript] = useState(true);
+  const [autoScroll, setAutoScroll] = useState(true);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
+  const scriptRef = useRef(null);
+  const lineRefs = useRef([]);
+
+  // Script panduan rekaman
+  const recordingScript = [
+    "Selamat pagi, nama saya [NAMA LENGKAP DOSEN]. Saya akan merekam sample suara untuk sistem pengenalan pembicara.",
+    "Hari ini tanggal [TANGGAL SEKARANG] dan rekaman ini akan digunakan untuk meningkatkan akurasi identifikasi dalam proses monitoring pembelajaran.",
+    "Dalam era digital seperti sekarang, teknologi artificial intelligence telah membawa banyak perubahan signifikan di berbagai bidang, termasuk pendidikan.",
+    "Sistem pengenalan suara atau speaker recognition memanfaatkan karakteristik vokal yang unik dari setiap individu untuk melakukan identifikasi.",
+    "Pendidikan tinggi menghadapi tantangan transformasi digital yang membutuhkan adaptasi cepat dari seluruh sivitas akademika.",
+    "Inovasi dalam teknologi pembelajaran tidak hanya tentang alat, tetapi juga tentang metodologi dan pendekatan yang lebih efektif.",
+    "Big data analytics dan machine learning menjadi komponen penting dalam menganalisis efektivitas proses belajar mengajar.",
+    "Data yang terkumpul dari berbagai sumber dapat memberikan insights berharga untuk perbaikan berkelanjutan.",
+    "Virtual classroom dan hybrid learning telah menjadi norma baru dalam pendidikan modern.",
+    "Fleksibilitas dalam pembelajaran memungkinkan akses yang lebih luas dan inklusif bagi mahasiswa dari berbagai latar belakang.",
+    "Quality assurance dalam pendidikan memerlukan monitoring yang komprehensif dan objektif.",
+    "Teknologi speaker recognition dapat membantu dalam mengevaluasi konsistensi dan kualitas penyampaian materi perkuliahan.",
+    "Blockchain technology menawarkan solusi untuk keamanan sertifikat akademik dan transkrip nilai.",
+    "Sistem yang terdesentralisasi ini meminimalkan risiko pemalsuan dokumen penting.",
+    "Internet of Things dalam kampus pintar memungkinkan optimasi penggunaan energi dan pemeliharaan fasilitas.",
+    "Pada akhirnya, tujuan utama teknologi dalam pendidikan adalah meningkatkan kualitas pembelajaran.",
+    "Dan memastikan bahwa setiap mahasiswa mendapatkan pengalaman belajar yang optimal dan bermakna untuk masa depan mereka."
+  ];
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -23,6 +49,29 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
     };
   }, []);
 
+  // Auto-scroll to current line
+  useEffect(() => {
+    if (autoScroll && lineRefs.current[currentLine]) {
+      lineRefs.current[currentLine].scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }, [currentLine, autoScroll]);
+
+  // Update current line based on recording time
+  useEffect(() => {
+    if (isRecording) {
+      // Calculate which line should be read based on recording time
+      // Assuming each line takes about 3.5 seconds (60 seconds / 17 lines ≈ 3.5s per line)
+      const lineIndex = Math.min(
+        Math.floor(recordingTime / 3.5),
+        recordingScript.length - 1
+      );
+      setCurrentLine(lineIndex);
+    }
+  }, [recordingTime, isRecording]);
+
   const startRecording = async () => {
     try {
       // Reset state
@@ -30,6 +79,7 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
       setAudioBlob(null);
       setRecordingTime(0);
       setRecordingDuration(0);
+      setCurrentLine(0);
 
       // Request microphone permission
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -72,7 +122,7 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
       };
 
       // Start recording
-      mediaRecorder.start(1000); // Collect data every second
+      mediaRecorder.start(1000);
       setIsRecording(true);
       
       // Start timer
@@ -81,8 +131,8 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         setRecordingTime(elapsed);
         
-        // Auto-stop after 5 minutes (300 seconds) for safety
-        if (elapsed >= 300) {
+        // Auto-stop after 70 seconds for safety (extra 10 seconds buffer)
+        if (elapsed >= 70) {
           stopRecording();
         }
       }, 1000);
@@ -102,13 +152,11 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
   };
 
   const convertToWav = (webmBlob) => {
-    // Create a temporary audio element to play and record
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const fileReader = new FileReader();
 
     fileReader.onload = function() {
       audioContext.decodeAudioData(fileReader.result, (buffer) => {
-        // Convert to WAV
         const wavBlob = bufferToWav(buffer);
         setAudioBlob(wavBlob);
       });
@@ -130,11 +178,9 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
       }
     }
 
-    // Create WAV file
     const wavBuffer = new ArrayBuffer(44 + interleaved.length * 2);
     const view = new DataView(wavBuffer);
 
-    // Write WAV header
     const writeString = (offset, string) => {
       for (let i = 0; i < string.length; i++) {
         view.setUint8(offset + i, string.charCodeAt(i));
@@ -155,7 +201,6 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
     writeString(36, 'data');
     view.setUint32(40, interleaved.length * 2, true);
 
-    // Write audio data
     let offset = 44;
     for (let i = 0; i < interleaved.length; i++) {
       const sample = Math.max(-1, Math.min(1, interleaved[i]));
@@ -197,124 +242,241 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
     setRecordingTime(0);
     setRecordingDuration(0);
     setError('');
+    setCurrentLine(0);
+  };
+
+  const replacePlaceholders = (text) => {
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    return text
+      .replace('[NAMA LENGKAP DOSEN]', dosen.nama)
+      .replace('[TANGGAL SEKARANG]', formattedDate);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <h2 className="text-xl font-semibold mb-4">
-          Rekam Sample Suara - {dosen.nama}
-        </h2>
+    <div className="fixed inset-0 backdrop-blur drop-shadow-2xl bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold">
+            Rekam Sample Suara - {dosen.nama}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            ✕
+          </button>
+        </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-3">
             {error}
           </div>
         )}
 
-        <div className="space-y-4">
-          {/* Recording Controls */}
-          <div className="flex flex-col items-center space-y-4">
-            {!isRecording && !audioBlob && (
-              <div className="text-center">
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-4 mx-auto">
-                  <Mic className="h-8 w-8 text-blue-600" />
+        <div className="flex-1 overflow-hidden flex">
+          {/* Script Panel */}
+          {showScript && (
+            <div className="w-1/2 border-r border-gray-200 flex flex-col">
+              <div className="flex justify-between items-center p-4 bg-gray-50 border-b border-gray-200">
+                <h3 className="font-medium text-gray-800">Script Panduan</h3>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setAutoScroll(!autoScroll)}
+                    className={`text-xs px-2 py-1 rounded ${
+                      autoScroll ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    Auto-scroll: {autoScroll ? 'ON' : 'OFF'}
+                  </button>
+                  <button
+                    onClick={() => setShowScript(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
                 </div>
-                <p className="text-gray-600 mb-4">
-                  Klik tombol di bawah untuk mulai merekam sample suara dosen
-                </p>
-                <button
-                  onClick={startRecording}
-                  className="flex items-center space-x-2 btn-primary"
-                >
-                  <Mic className="h-4 w-4" />
-                  <span>Mulai Rekam</span>
-                </button>
               </div>
-            )}
-
-            {isRecording && (
-              <div className="text-center">
-                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse">
-                  <Circle className="h-8 w-8 text-red-600 fill-red-600" />
+              
+              <div 
+                ref={scriptRef}
+                className="flex-1 overflow-y-auto p-4 bg-gray-25"
+              >
+                <div className="space-y-3">
+                  {recordingScript.map((line, index) => (
+                    <div
+                      key={index}
+                      ref={el => lineRefs.current[index] = el}
+                      className={`p-3 rounded-lg transition-all duration-300 ${
+                        index === currentLine && isRecording
+                          ? 'bg-blue-100 border-2 border-blue-300 shadow-sm'
+                          : 'bg-white border border-gray-200'
+                      } ${
+                        index < currentLine 
+                          ? 'opacity-60' 
+                          : 'opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                          index === currentLine && isRecording
+                            ? 'bg-blue-500 text-white'
+                            : index < currentLine
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {replacePlaceholders(line)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="text-2xl font-mono font-bold text-red-600 mb-2">
-                  {formatTime(recordingTime)}
-                </div>
-                <p className="text-gray-600 mb-2">Sedang merekam... </p>
-                <p className="text-sm text-gray-500">
-                  Rekam suara yang jelas untuk hasil recognition yang optimal
-                </p>
-                <button
-                  onClick={stopRecording}
-                  className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg mt-4"
-                >
-                  <Square className="h-4 w-4" />
-                  <span>Stop Rekam</span>
-                </button>
               </div>
-            )}
+            </div>
+          )}
 
-            {audioBlob && !isRecording && (
-              <div className="text-center w-full">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4 mx-auto">
-                  <Mic className="h-8 w-8 text-green-600" />
+          {/* Controls Panel */}
+          <div className={`${showScript ? 'w-1/2' : 'w-full'} flex flex-col`}>
+            <div className="flex justify-between items-center p-4 bg-gray-50 border-b border-gray-200">
+              <h3 className="font-medium text-gray-800">Kontrol Rekaman</h3>
+              {!showScript && (
+                <button
+                  onClick={() => setShowScript(true)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="space-y-6">
+                {/* Recording Controls */}
+                <div className="flex flex-col items-center space-y-4">
+                  {!isRecording && !audioBlob && (
+                    <div className="text-center py-8">
+                      <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-6 mx-auto">
+                        <Mic className="h-10 w-10 text-blue-600" />
+                      </div>
+                      <p className="text-gray-600 mb-2 text-lg">
+                        Siap untuk merekam sample suara
+                      </p>
+                      <p className="text-sm text-gray-500 mb-6 max-w-md">
+                        Baca script panduan yang tersedia. Rekaman akan berdurasi sekitar 1 menit untuk hasil recognition yang optimal.
+                      </p>
+                      <button
+                        onClick={startRecording}
+                        className="btn-primary flex items-center space-x-2 text-lg px-8 py-3"
+                      >
+                        <Mic className="h-5 w-5" />
+                        <span>Mulai Rekam</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {isRecording && (
+                    <div className="text-center py-6">
+                      <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse">
+                        <Circle className="h-8 w-8 text-red-600 fill-red-600" />
+                      </div>
+                      <div className="text-3xl font-mono font-bold text-red-600 mb-2">
+                        {formatTime(recordingTime)}
+                      </div>
+                      <p className="text-gray-600 mb-2 font-medium">Sedang merekam...</p>
+                      <p className="text-sm text-gray-500 mb-4">
+                        Ikuti script panduan untuk hasil terbaik
+                      </p>
+                      <button
+                        onClick={stopRecording}
+                        className="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-lg flex items-center space-x-2 mx-auto text-lg"
+                      >
+                        <Square className="h-5 w-5" />
+                        <span>Stop Rekam</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {audioBlob && !isRecording && (
+                    <div className="text-center w-full">
+                      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <Volume2 className="h-8 w-8 text-green-600" />
+                      </div>
+                      <p className="text-gray-600 mb-2 text-lg">
+                        Rekaman selesai! ({formatTime(recordingDuration)})
+                      </p>
+                      
+                      <div className="space-y-4 w-full max-w-md mx-auto">
+                        <p className="text-sm font-medium text-gray-700">Preview rekaman:</p>
+                        <audio controls className="w-full mb-4">
+                          <source src={URL.createObjectURL(audioBlob)} type="audio/wav" />
+                          Browser Anda tidak mendukung pemutar audio.
+                        </audio>
+                        
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={handleUpload}
+                            disabled={loading}
+                            className="flex-1 flex items-center space-x-2 btn-primary justify-center disabled:opacity-50 py-3"
+                          >
+                            <Upload className="h-5 w-5" />
+                            <span>{loading ? 'Mengupload...' : 'Simpan Sample'}</span>
+                          </button>
+                          
+                          <button
+                            onClick={handleRetry}
+                            disabled={loading}
+                            className="flex items-center space-x-2 btn-secondary disabled:opacity-50 py-3 px-6"
+                          >
+                            <span>Rekam Ulang</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <p className="text-gray-600 mb-2">
-                  Rekaman selesai ({formatTime(recordingDuration)})
-                </p>
-                
-                <div className="space-y-3 w-full">
-                  <p className="text-sm font-medium text-gray-700">Preview rekaman:</p>
-                  <audio controls className="w-full mb-4">
-                    <source src={URL.createObjectURL(audioBlob)} type="audio/wav" />
-                    Browser Anda tidak mendukung pemutar audio.
-                  </audio>
-                  
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={handleUpload}
-                      disabled={loading}
-                      className="flex-1 flex items-center space-x-2 btn-primary justify-center disabled:opacity-50"
-                    >
-                      <Upload className="h-4 w-4" />
-                      <span>{loading ? 'Mengupload...' : 'Simpan Sample'}</span>
-                    </button>
-                    
-                    <button
-                      onClick={handleRetry}
-                      disabled={loading}
-                      className="flex items-center space-x-2 btn-secondary disabled:opacity-50"
-                    >
-                      <span>Ulangi</span>
-                    </button>
+
+                {/* Progress Indicator */}
+                {isRecording && (
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-blue-800">Progress</span>
+                      <span className="text-sm text-blue-600">
+                        {currentLine + 1} / {recordingScript.length}
+                      </span>
+                    </div>
+                    <div className="w-full bg-blue-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${((currentLine + 1) / recordingScript.length) * 100}%` }}
+                      ></div>
+                    </div>
                   </div>
+                )}
+
+                {/* Instructions */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h4 className="font-medium text-yellow-800 mb-2">Panduan Rekaman:</h4>
+                  <ul className="text-sm text-yellow-700 space-y-1">
+                    <li>• <strong>Baca natural</strong> dengan kecepatan sedang</li>
+                    <li>• <strong>Volume konsisten</strong> - tidak terlalu keras atau pelan</li>
+                    <li>• <strong>Jeda seperlunya</strong> di antara kalimat</li>
+                    <li>• <strong>Lafal jelas</strong> untuk setiap kata</li>
+                    <li>• <strong>Target durasi</strong> sekitar 1 menit</li>
+                  </ul>
                 </div>
               </div>
-            )}
+            </div>
           </div>
-
-          {/* Instructions */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-800 mb-2">Tips Rekaman yang Baik:</h4>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li>• Gunakan lingkungan yang tenang</li>
-              <li>• Bicara dengan jelas dan natural</li>
-              <li>• Jarak ideal 15-30 cm dari mikrofon</li>
-              <li>• Rekam minimal 10-30 detik untuk hasil optimal</li>
-              <li>• Hindari background noise dan gema</li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="flex justify-end mt-6">
-          <button
-            onClick={onClose}
-            className="btn-secondary"
-            disabled={loading}
-          >
-            Tutup
-          </button>
         </div>
       </div>
     </div>

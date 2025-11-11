@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Circle, Upload, Volume2, ChevronDown, ChevronUp, Check, CheckCircle } from 'lucide-react';
+import { Mic, Square, Circle, Upload, Volume2, ChevronDown, ChevronUp, Check, CheckCircle, X, User } from 'lucide-react';
 import { dosenAPI, APP_CONFIG } from '../../services/api';
 
 export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
@@ -78,13 +78,10 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
     const newCompletedLines = new Set(completedLines);
     
     if (newCompletedLines.has(currentFocusedLine)) {
-      // Jika sudah completed, uncheck
       newCompletedLines.delete(currentFocusedLine);
     } else {
-      // Jika belum completed, check dan pindah ke line berikutnya
       newCompletedLines.add(currentFocusedLine);
       
-      // Cari line berikutnya yang belum completed
       let nextLine = currentFocusedLine + 1;
       while (nextLine < recordingScript.length && newCompletedLines.has(nextLine)) {
         nextLine++;
@@ -105,7 +102,6 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
     } else {
       newCompletedLines.add(lineIndex);
       
-      // Cari line berikutnya yang belum completed
       let nextLine = lineIndex + 1;
       while (nextLine < recordingScript.length && newCompletedLines.has(nextLine)) {
         nextLine++;
@@ -120,7 +116,6 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
 
   const startRecording = async () => {
     try {
-      // Reset state
       setError('');
       setAudioBlob(null);
       setRecordingTime(0);
@@ -128,7 +123,6 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
       setCompletedLines(new Set());
       setCurrentFocusedLine(0);
 
-      // Request microphone permission
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -155,30 +149,23 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
           type: 'audio/webm;codecs=opus' 
         });
         
-        // Convert to WAV format
         convertToWav(audioBlob);
-        
-        // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
         
-        // Clear timer
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
       };
 
-      // Start recording
       mediaRecorder.start(1000);
       setIsRecording(true);
       
-      // Start timer
       const startTime = Date.now();
       timerRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         setRecordingTime(elapsed);
         
-        // Auto-stop after 70 seconds for safety
         if (elapsed >= 70) {
           stopRecording();
         }
@@ -312,40 +299,59 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
     : 0;
 
   return (
-    <div className="fixed inset-0 backdrop-blur drop-shadow-2xl bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 backdrop-blur-sm drop-shadow-2xl bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-indigo-100">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">
-            Rekam Sample Suara - {dosen.nama}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            ✕
-          </button>
+        <div className="bg-linear-to-r from-indigo-500 to-purple-400 px-6 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                <Mic className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">
+                  Rekam Sample Suara
+                </h2>
+                <p className="text-indigo-100 text-sm">
+                  {dosen.nama} - {dosen.gelar}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white hover:bg-white/20 p-2 rounded-xl transition-colors duration-200"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-3">
-            {error}
+          <div className="bg-rose-50 border-b border-rose-200 text-rose-700 px-6 py-3">
+            <div className="flex items-center">
+              <div className="shrink-0">
+                <Circle className="h-4 w-4" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+            </div>
           </div>
         )}
 
         <div className="flex-1 overflow-hidden flex">
           {/* Script Panel */}
           {showScript && (
-            <div className="w-1/2 border-r border-gray-200 flex flex-col">
-              <div className="flex justify-between items-center p-4 bg-gray-50 border-b border-gray-200">
-                <h3 className="font-medium text-gray-800">Script Panduan</h3>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-gray-500">
+            <div className="w-1/2 border-r border-indigo-100 flex flex-col">
+              <div className="flex justify-between items-center p-4 bg-indigo-50 border-b border-indigo-100">
+                <h3 className="font-semibold text-indigo-800">Script Panduan</h3>
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-indigo-600 font-medium">
                     {completedLines.size} / {recordingScript.length} selesai
                   </span>
                   <button
                     onClick={() => setShowScript(false)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-indigo-400 hover:text-indigo-600 transition-colors duration-200"
                   >
                     <ChevronDown className="h-4 w-4" />
                   </button>
@@ -353,10 +359,10 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
               </div>
 
               {/* Progress Bar */}
-              <div className="px-4 py-2 bg-gray-25 border-b border-gray-200">
-                <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="px-4 py-3 bg-white border-b border-indigo-100">
+                <div className="w-full bg-indigo-200 rounded-full h-2">
                   <div 
-                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                    className="bg-linear-to-r from-emerald-500 to-green-400 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${progressPercentage}%` }}
                   ></div>
                 </div>
@@ -364,15 +370,15 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
 
               {/* Keyboard Instructions */}
               {isRecording && (
-                <div className="px-4 py-2 bg-blue-50 border-b border-gray-200">
-                  <div className="flex items-center space-x-4 text-xs text-blue-600">
-                    <div className="flex items-center space-x-1">
-                      <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded">Enter</kbd>
-                      <span>Ceklis line</span>
+                <div className="px-4 py-3 bg-blue-50 border-b border-blue-100">
+                  <div className="flex items-center space-x-4 text-sm">
+                    <div className="flex items-center space-x-2 bg-white px-3 py-1 rounded-lg border border-blue-200">
+                      <kbd className="px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-100 border border-blue-300 rounded">Enter</kbd>
+                      <span className="text-blue-700">Ceklis line</span>
                     </div>
-                    <div className="flex items-center space-x-1">
-                      <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded">↑↓</kbd>
-                      <span>Navigasi</span>
+                    <div className="flex items-center space-x-2 bg-white px-3 py-1 rounded-lg border border-blue-200">
+                      <kbd className="px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-100 border border-blue-300 rounded">↑↓</kbd>
+                      <span className="text-blue-700">Navigasi</span>
                     </div>
                   </div>
                 </div>
@@ -380,7 +386,7 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
               
               <div 
                 ref={scriptContainerRef}
-                className="flex-1 overflow-y-auto p-4 bg-gray-25"
+                className="flex-1 overflow-y-auto p-4 bg-linear-to-b from-white to-indigo-25"
               >
                 <div className="space-y-3">
                   {recordingScript.map((line, index) => (
@@ -388,38 +394,38 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
                       key={index}
                       id={`line-${index}`}
                       ref={el => lineRefs.current[index] = el}
-                      className={`p-3 rounded-lg transition-all duration-300 cursor-pointer group ${
+                      className={`p-4 rounded-xl transition-all duration-300 cursor-pointer border-2 ${
                         completedLines.has(index)
-                          ? 'bg-green-50 border-2 border-green-200'
+                          ? 'bg-emerald-50 border-emerald-200 shadow-sm'
                           : currentFocusedLine === index && isRecording
-                          ? 'bg-blue-50 border-2 border-blue-300 shadow-md'
-                          : 'bg-white border border-gray-200 hover:border-blue-300'
+                          ? 'bg-linear-to-r from-indigo-50 to-blue-50 border-indigo-300 shadow-md'
+                          : 'bg-white border-indigo-100 hover:border-indigo-200'
                       }`}
                       onClick={() => isRecording && (setCurrentFocusedLine(index), toggleLineCompletion(index))}
                     >
                       <div className="flex items-start space-x-3">
                         {/* Checkbox */}
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
                           completedLines.has(index)
-                            ? 'bg-green-500 text-white'
+                            ? 'bg-emerald-500 text-white shadow-sm'
                             : currentFocusedLine === index && isRecording
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-400 group-hover:bg-gray-200'
+                            ? 'bg-indigo-500 text-white shadow-sm'
+                            : 'bg-indigo-100 text-indigo-400 group-hover:bg-indigo-200'
                         }`}>
                           {completedLines.has(index) ? (
                             <Check className="h-4 w-4" />
                           ) : (
                             <div className={`w-2 h-2 rounded-full ${
-                              currentFocusedLine === index && isRecording ? 'bg-white' : 'bg-gray-400'
+                              currentFocusedLine === index && isRecording ? 'bg-white' : 'bg-indigo-400'
                             }`} />
                           )}
                         </div>
                         
                         {/* Line Number */}
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
                           currentFocusedLine === index && isRecording
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-blue-100 text-blue-700'
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-indigo-100 text-indigo-700'
                         }`}>
                           {index + 1}
                         </div>
@@ -432,7 +438,7 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
                       
                       {/* Instruction */}
                       {isRecording && !completedLines.has(index) && (
-                        <div className="mt-2 flex items-center space-x-2 text-xs text-blue-600">
+                        <div className="mt-2 flex items-center space-x-2 text-xs text-indigo-600">
                           <CheckCircle className="h-3 w-3" />
                           <span>
                             {currentFocusedLine === index 
@@ -451,79 +457,79 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
 
           {/* Controls Panel */}
           <div className={`${showScript ? 'w-1/2' : 'w-full'} flex flex-col`}>
-            <div className="flex justify-between items-center p-4 bg-gray-50 border-b border-gray-200">
-              <h3 className="font-medium text-gray-800">Kontrol Rekaman</h3>
+            <div className="flex justify-between items-center p-4 bg-indigo-50 border-b border-indigo-100">
+              <h3 className="font-semibold text-indigo-800">Kontrol Rekaman</h3>
               {!showScript && (
                 <button
                   onClick={() => setShowScript(true)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-indigo-400 hover:text-indigo-600 transition-colors duration-200"
                 >
                   <ChevronUp className="h-4 w-4" />
                 </button>
               )}
             </div>
 
-            <div className="flex-1 p-6 overflow-y-auto">
-              <div className="space-y-6">
+            <div className="flex-1 p-6 overflow-y-auto bg-linear-to-b from-white to-blue-25">
+              <div className="space-y-8">
                 {/* Recording Controls */}
-                <div className="flex flex-col items-center space-y-4">
+                <div className="flex flex-col items-center space-y-6">
                   {!isRecording && !audioBlob && (
                     <div className="text-center py-8">
-                      <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-6 mx-auto">
-                        <Mic className="h-10 w-10 text-blue-600" />
+                      <div className="w-28 h-28 bg-linear-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mb-6 mx-auto shadow-lg">
+                        <Mic className="h-12 w-12 text-indigo-600" />
                       </div>
-                      <p className="text-gray-600 mb-2 text-lg">
+                      <p className="text-gray-700 mb-3 text-xl font-semibold">
                         Siap untuk merekam sample suara
                       </p>
-                      <p className="text-sm text-gray-500 mb-6 max-w-md">
+                      <p className="text-gray-600 mb-8 max-w-md text-lg leading-relaxed">
                         Baca script panduan yang tersedia. Rekaman akan berdurasi sekitar 1 menit untuk hasil recognition yang optimal.
                       </p>
                       <button
                         onClick={startRecording}
-                        className="btn-primary flex items-center space-x-2 text-lg px-8 py-3"
+                        className="bg-linear-to-r from-indigo-500 to-purple-400 hover:from-indigo-600 hover:to-purple-500 text-white font-semibold text-lg py-4 px-10 rounded-xl flex items-center space-x-3 transition-all duration-200 shadow-lg hover:shadow-xl"
                       >
-                        <Mic className="h-5 w-5" />
+                        <Mic className="h-6 w-6" />
                         <span>Mulai Rekam</span>
                       </button>
                     </div>
                   )}
 
                   {isRecording && (
-                    <div className="text-center py-6">
-                      <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse">
-                        <Circle className="h-8 w-8 text-red-600 fill-red-600" />
+                    <div className="text-center py-8 w-full">
+                      <div className="w-24 h-24 bg-linear-to-br from-rose-100 to-red-100 rounded-full flex items-center justify-center mb-6 mx-auto animate-pulse shadow-lg">
+                        <Circle className="h-10 w-10 text-rose-600 fill-rose-600" />
                       </div>
-                      <div className="text-3xl font-mono font-bold text-red-600 mb-2">
+                      <div className="text-4xl font-mono font-bold text-rose-600 mb-4">
                         {formatTime(recordingTime)}
                       </div>
-                      <p className="text-gray-600 mb-2 font-medium">Sedang merekam...</p>
+                      <p className="text-gray-700 mb-4 font-semibold text-lg">Sedang merekam...</p>
                       
                       {/* Progress Indicator */}
-                      <div className="bg-blue-50 rounded-lg p-3 mb-3">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-xs font-medium text-blue-800">Progress Script</span>
-                          <span className="text-xs text-blue-600">
+                      <div className="bg-indigo-50 rounded-xl p-4 mb-4 border border-indigo-100 max-w-md mx-auto">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-semibold text-indigo-800">Progress Script</span>
+                          <span className="text-sm text-indigo-600 font-medium">
                             {completedLines.size} / {recordingScript.length} selesai
                           </span>
                         </div>
-                        <div className="w-full bg-blue-200 rounded-full h-2">
+                        <div className="w-full bg-indigo-200 rounded-full h-2">
                           <div 
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            className="bg-linear-to-r from-indigo-500 to-purple-400 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${progressPercentage}%` }}
                           ></div>
                         </div>
                       </div>
 
                       {/* Current Focus Info */}
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
-                        <div className="text-xs text-green-700">
-                          <strong>Line aktif:</strong> {currentFocusedLine + 1}. {recordingScript[currentFocusedLine].substring(0, 50)}...
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 max-w-md mx-auto">
+                        <div className="text-sm text-emerald-700 font-medium">
+                          <strong>Line aktif:</strong> {currentFocusedLine + 1}. {recordingScript[currentFocusedLine].substring(0, 60)}...
                         </div>
                       </div>
 
                       <button
                         onClick={stopRecording}
-                        className="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-lg flex items-center space-x-2 mx-auto text-lg"
+                        className="bg-linear-to-r from-rose-500 to-red-400 hover:from-rose-600 hover:to-red-500 text-white font-semibold text-lg py-4 px-8 rounded-xl flex items-center space-x-3 transition-all duration-200 shadow-lg hover:shadow-xl"
                       >
                         <Square className="h-5 w-5" />
                         <span>Stop Rekam</span>
@@ -533,25 +539,30 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
 
                   {audioBlob && !isRecording && (
                     <div className="text-center w-full">
-                      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4 mx-auto">
-                        <Volume2 className="h-8 w-8 text-green-600" />
+                      <div className="w-24 h-24 bg-linear-to-br from-emerald-100 to-green-100 rounded-full flex items-center justify-center mb-6 mx-auto shadow-lg">
+                        <Volume2 className="h-10 w-10 text-emerald-600" />
                       </div>
-                      <p className="text-gray-600 mb-2 text-lg">
+                      <p className="text-gray-700 mb-2 text-xl font-semibold">
                         Rekaman selesai! ({formatTime(recordingDuration)})
                       </p>
+                      <p className="text-emerald-600 mb-6 text-lg font-medium">
+                        ✓ Sample suara berhasil direkam
+                      </p>
                       
-                      <div className="space-y-4 w-full max-w-md mx-auto">
-                        <p className="text-sm font-medium text-gray-700">Preview rekaman:</p>
-                        <audio controls className="w-full mb-4">
-                          <source src={URL.createObjectURL(audioBlob)} type="audio/wav" />
-                          Browser Anda tidak mendukung pemutar audio.
-                        </audio>
+                      <div className="space-y-6 w-full max-w-md mx-auto">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700 mb-3">Preview rekaman:</p>
+                          <audio controls className="w-full rounded-lg shadow-sm">
+                            <source src={URL.createObjectURL(audioBlob)} type="audio/wav" />
+                            Browser Anda tidak mendukung pemutar audio.
+                          </audio>
+                        </div>
                         
-                        <div className="flex space-x-3">
+                        <div className="flex space-x-4">
                           <button
                             onClick={handleUpload}
                             disabled={loading}
-                            className="flex-1 flex items-center space-x-2 btn-primary justify-center disabled:opacity-50 py-3"
+                            className="flex-1 bg-linear-to-r from-emerald-500 to-green-400 hover:from-emerald-600 hover:to-green-500 text-white font-semibold py-4 px-6 rounded-xl flex items-center space-x-3 justify-center transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Upload className="h-5 w-5" />
                             <span>{loading ? 'Mengupload...' : 'Simpan Sample'}</span>
@@ -560,7 +571,7 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
                           <button
                             onClick={handleRetry}
                             disabled={loading}
-                            className="flex items-center space-x-2 btn-secondary disabled:opacity-50 py-3 px-6"
+                            className="bg-white text-gray-700 hover:bg-gray-50 font-medium py-4 px-6 rounded-xl border border-gray-300 flex items-center space-x-2 transition-all duration-200 hover:shadow-lg disabled:opacity-50"
                           >
                             <span>Rekam Ulang</span>
                           </button>
@@ -571,15 +582,29 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
                 </div>
 
                 {/* Instructions */}
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <h4 className="font-medium text-yellow-800 mb-2">Panduan Rekaman:</h4>
-                  <ul className="text-sm text-yellow-700 space-y-1">
-                    <li>• <strong>Baca natural</strong> dengan kecepatan sedang</li>
-                    <li>• <strong>Enter</strong> - Ceklis line saat ini</li>
-                    <li>• <strong>↑/↓</strong> - Navigasi antar line</li>
-                    <li>• <strong>Klik</strong> - Pilih dan ceklis line</li>
-                    <li>• <strong>Volume konsisten</strong> - tidak terlalu keras atau pelan</li>
-                    <li>• <strong>Target durasi</strong> sekitar 1 menit</li>
+                <div className="bg-linear-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-5">
+                  <h4 className="font-semibold text-amber-800 mb-3 text-lg">Panduan Rekaman:</h4>
+                  <ul className="text-amber-700 space-y-2 text-sm">
+                    <li className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                      <span><strong>Baca natural</strong> dengan kecepatan sedang dan artikulasi jelas</span>
+                    </li>
+                    <li className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                      <span><strong>Enter</strong> - Ceklis line saat ini setelah selesai membaca</span>
+                    </li>
+                    <li className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                      <span><strong>↑/↓</strong> - Navigasi antar line script</span>
+                    </li>
+                    <li className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                      <span><strong>Volume konsisten</strong> - jaga jarak dengan mikrofon tetap sama</span>
+                    </li>
+                    <li className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                      <span><strong>Target durasi</strong> sekitar 1 menit untuk coverage vokal yang optimal</span>
+                    </li>
                   </ul>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 import { useApi } from '../hooks/useApi';
 import { dosenAPI, jadwalAPI, evaluasiAPI } from '../services/api';
-import { Users, Calendar, BarChart3, Mic, TrendingUp, Clock } from 'lucide-react';
+import { Users, Calendar, BarChart3, Mic, TrendingUp, Clock, Activity } from 'lucide-react';
 
 export default function Dashboard() {
   const { data: dosen, loading: loadingDosen } = useApi(dosenAPI.getAll);
@@ -12,7 +12,7 @@ export default function Dashboard() {
       title: 'Total Dosen',
       value: dosen?.length || 0,
       icon: Users,
-      color: 'blue',
+      color: 'indigo',
       description: 'Dosen terdaftar'
     },
     {
@@ -22,7 +22,7 @@ export default function Dashboard() {
         return new Date(j.waktu_mulai).toDateString() === today;
       })?.length || 0,
       icon: Calendar,
-      color: 'green',
+      color: 'emerald',
       description: 'Jadwal untuk hari ini'
     },
     {
@@ -36,7 +36,7 @@ export default function Dashboard() {
       title: 'Sedang Rekam',
       value: jadwal?.filter(j => j.sedang_rekam)?.length || 0,
       icon: Mic,
-      color: 'red',
+      color: 'rose',
       description: 'Sedang aktif merekam'
     },
   ];
@@ -50,7 +50,7 @@ export default function Dashboard() {
   if (loadingDosen || loadingJadwal || loadingEvaluasi) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
@@ -61,24 +61,32 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Dashboard</h1>
-        <p className="text-gray-600">Overview sistem monitoring pengajar CLAIRE</p>
+      {/* Header */}
+      <div className="bg-linear-to-r from-indigo-500 to-purple-400 rounded-2xl p-6 text-white">
+        <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
+        <p className="text-indigo-100">Overview sistem monitoring pengajar CLAIRE</p>
       </div>
       
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => {
           const Icon = stat.icon;
+          const colorClasses = {
+            indigo: 'bg-indigo-100 text-indigo-600',
+            emerald: 'bg-emerald-100 text-emerald-600',
+            purple: 'bg-purple-100 text-purple-600',
+            rose: 'bg-rose-100 text-rose-600'
+          };
+          
           return (
-            <div key={stat.title} className="card">
+            <div key={stat.title} className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6 hover:shadow-md transition-shadow duration-300">
               <div className="flex items-center">
-                <div className={`p-3 rounded-lg bg-${stat.color}-100`}>
-                  <Icon className={`h-6 w-6 text-${stat.color}-600`} />
+                <div className={`p-3 rounded-lg ${colorClasses[stat.color]}`}>
+                  <Icon className="h-6 w-6" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                  <p className="text-2xl font-semibold text-gray-800">{stat.value}</p>
+                  <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
                   <p className="text-xs text-gray-500">{stat.description}</p>
                 </div>
               </div>
@@ -89,23 +97,25 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Evaluations */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-800">Evaluasi Terbaru</h2>
-            <TrendingUp className="h-5 w-5 text-gray-400" />
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-indigo-600" />
+            </div>
           </div>
           
-          <div className="space-y-3">
+          <div className="space-y-4">
             {recentEvaluasi.map((evalItem) => (
-              <div key={evalItem.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-gray-800">{evalItem.jadwal?.nama_matkul}</p>
-                  <p className="text-sm text-gray-600">{evalItem.jadwal?.dosen?.nama}</p>
+              <div key={evalItem.id} className="flex items-center justify-between p-4 bg-linear-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-100 hover:border-indigo-200 transition-colors duration-200">
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-800 truncate">{evalItem.jadwal?.nama_matkul}</p>
+                  <p className="text-sm text-gray-600 truncate">{evalItem.jadwal?.dosen?.nama}</p>
                 </div>
-                <div className={`px-2 py-1 rounded text-xs font-medium ${
-                  evalItem.skor_efektivitas >= 80 ? 'bg-green-100 text-green-800' :
-                  evalItem.skor_efektivitas >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
+                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  evalItem.skor_efektivitas >= 80 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                  evalItem.skor_efektivitas >= 60 ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                  'bg-rose-100 text-rose-800 border border-rose-200'
                 }`}>
                   {evalItem.skor_efektivitas}%
                 </div>
@@ -113,31 +123,47 @@ export default function Dashboard() {
             ))}
             
             {recentEvaluasi.length === 0 && (
-              <p className="text-center text-gray-500 py-4">Belum ada evaluasi</p>
+              <div className="text-center py-8">
+                <BarChart3 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">Belum ada evaluasi</p>
+              </div>
             )}
           </div>
         </div>
 
         {/* Upcoming Schedule */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-800">Jadwal Mendatang</h2>
-            <Clock className="h-5 w-5 text-gray-400" />
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <Clock className="h-5 w-5 text-indigo-600" />
+            </div>
           </div>
           
-          <div className="space-y-3">
+          <div className="space-y-4">
             {upcomingJadwal.map((jadwalItem) => (
-              <div key={jadwalItem.id} className="p-3 bg-gray-50 rounded-lg">
-                <p className="font-medium text-gray-800">{jadwalItem.nama_matkul}</p>
-                <p className="text-sm text-gray-600">{jadwalItem.dosen?.nama}</p>
-                <p className="text-xs text-gray-500 mt-1">
+              <div key={jadwalItem.id} className="p-4 bg-linear-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100 hover:border-purple-200 transition-colors duration-200">
+                <div className="flex justify-between items-start mb-2">
+                  <p className="font-semibold text-gray-800 flex-1">{jadwalItem.nama_matkul}</p>
+                  {jadwalItem.sedang_rekam && (
+                    <span className="ml-2 px-2 py-1 bg-rose-100 text-rose-800 text-xs rounded-full font-medium">
+                      Live
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 mb-2">{jadwalItem.dosen?.nama}</p>
+                <p className="text-xs text-gray-500 flex items-center">
+                  <Calendar className="h-3 w-3 mr-1" />
                   {new Date(jadwalItem.waktu_mulai).toLocaleString('id-ID')}
                 </p>
               </div>
             ))}
             
             {upcomingJadwal.length === 0 && (
-              <p className="text-center text-gray-500 py-4">Tidak ada jadwal mendatang</p>
+              <div className="text-center py-8">
+                <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">Tidak ada jadwal mendatang</p>
+              </div>
             )}
           </div>
         </div>
@@ -145,23 +171,26 @@ export default function Dashboard() {
 
       {/* Overall Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card text-center">
-          <div className="text-3xl font-bold text-primary-600">{averageEffectiveness}%</div>
-          <div className="text-sm text-gray-600">Rata-rata Efektivitas</div>
+        <div className="bg-linear-to-br from-indigo-500 to-purple-400 rounded-xl p-6 text-white text-center hover:shadow-lg transition-shadow duration-300">
+          <Activity className="h-8 w-8 mx-auto mb-3 text-indigo-200" />
+          <div className="text-3xl font-bold mb-1">{averageEffectiveness}%</div>
+          <div className="text-indigo-100 text-sm">Rata-rata Efektivitas</div>
         </div>
         
-        <div className="card text-center">
-          <div className="text-3xl font-bold text-green-600">
+        <div className="bg-linear-to-br from-emerald-500 to-green-400 rounded-xl p-6 text-white text-center hover:shadow-lg transition-shadow duration-300">
+          <TrendingUp className="h-8 w-8 mx-auto mb-3 text-emerald-200" />
+          <div className="text-3xl font-bold mb-1">
             {evaluasi?.filter(ev => ev.kepercayaan_pembicara >= 0.8).length || 0}
           </div>
-          <div className="text-sm text-gray-600">Identifikasi Akurat</div>
+          <div className="text-emerald-100 text-sm">Identifikasi Akurat</div>
         </div>
         
-        <div className="card text-center">
-          <div className="text-3xl font-bold text-blue-600">
+        <div className="bg-linear-to-br from-blue-500 to-cyan-400 rounded-xl p-6 text-white text-center hover:shadow-lg transition-shadow duration-300">
+          <Users className="h-8 w-8 mx-auto mb-3 text-blue-200" />
+          <div className="text-3xl font-bold mb-1">
             {jadwal?.filter(j => j.status === 'selesai').length || 0}
           </div>
-          <div className="text-sm text-gray-600">Sesi Selesai</div>
+          <div className="text-blue-100 text-sm">Sesi Selesai</div>
         </div>
       </div>
     </div>

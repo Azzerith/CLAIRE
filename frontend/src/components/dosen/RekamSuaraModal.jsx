@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Circle, Upload, Volume2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Mic, Square, Circle, Upload, Volume2, ChevronDown, ChevronUp, Check, CheckCircle } from 'lucide-react';
 import { dosenAPI, APP_CONFIG } from '../../services/api';
 
 export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
@@ -9,14 +9,14 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
   const [error, setError] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [currentLine, setCurrentLine] = useState(0);
+  const [completedLines, setCompletedLines] = useState(new Set());
   const [showScript, setShowScript] = useState(true);
-  const [autoScroll, setAutoScroll] = useState(true);
+  const [currentFocusedLine, setCurrentFocusedLine] = useState(0);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
-  const scriptRef = useRef(null);
+  const scriptContainerRef = useRef(null);
   const lineRefs = useRef([]);
 
   // Script panduan rekaman
@@ -28,16 +28,6 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
     "Pendidikan tinggi menghadapi tantangan transformasi digital yang membutuhkan adaptasi cepat dari seluruh sivitas akademika.",
     "Inovasi dalam teknologi pembelajaran tidak hanya tentang alat, tetapi juga tentang metodologi dan pendekatan yang lebih efektif.",
     "Big data analytics dan machine learning menjadi komponen penting dalam menganalisis efektivitas proses belajar mengajar.",
-    "Data yang terkumpul dari berbagai sumber dapat memberikan insights berharga untuk perbaikan berkelanjutan.",
-    "Virtual classroom dan hybrid learning telah menjadi norma baru dalam pendidikan modern.",
-    "Fleksibilitas dalam pembelajaran memungkinkan akses yang lebih luas dan inklusif bagi mahasiswa dari berbagai latar belakang.",
-    "Quality assurance dalam pendidikan memerlukan monitoring yang komprehensif dan objektif.",
-    "Teknologi speaker recognition dapat membantu dalam mengevaluasi konsistensi dan kualitas penyampaian materi perkuliahan.",
-    "Blockchain technology menawarkan solusi untuk keamanan sertifikat akademik dan transkrip nilai.",
-    "Sistem yang terdesentralisasi ini meminimalkan risiko pemalsuan dokumen penting.",
-    "Internet of Things dalam kampus pintar memungkinkan optimasi penggunaan energi dan pemeliharaan fasilitas.",
-    "Pada akhirnya, tujuan utama teknologi dalam pendidikan adalah meningkatkan kualitas pembelajaran.",
-    "Dan memastikan bahwa setiap mahasiswa mendapatkan pengalaman belajar yang optimal dan bermakna untuk masa depan mereka."
   ];
 
   // Cleanup timer on unmount
@@ -49,28 +39,84 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
     };
   }, []);
 
-  // Auto-scroll to current line
+  // Handle keyboard events
   useEffect(() => {
-    if (autoScroll && lineRefs.current[currentLine]) {
-      lineRefs.current[currentLine].scrollIntoView({
+    const handleKeyPress = (event) => {
+      if (!isRecording) return;
+      
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleEnterKey();
+      } else if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setCurrentFocusedLine(prev => Math.min(prev + 1, recordingScript.length - 1));
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setCurrentFocusedLine(prev => Math.max(prev - 1, 0));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [isRecording, currentFocusedLine, completedLines]);
+
+  // Auto-scroll to focused line
+  useEffect(() => {
+    if (lineRefs.current[currentFocusedLine] && scriptContainerRef.current) {
+      lineRefs.current[currentFocusedLine].scrollIntoView({
         behavior: 'smooth',
         block: 'center'
       });
     }
-  }, [currentLine, autoScroll]);
+  }, [currentFocusedLine]);
 
-  // Update current line based on recording time
-  useEffect(() => {
-    if (isRecording) {
-      // Calculate which line should be read based on recording time
-      // Assuming each line takes about 3.5 seconds (60 seconds / 17 lines ≈ 3.5s per line)
-      const lineIndex = Math.min(
-        Math.floor(recordingTime / 3.5),
-        recordingScript.length - 1
-      );
-      setCurrentLine(lineIndex);
+  const handleEnterKey = () => {
+    if (!isRecording) return;
+    
+    const newCompletedLines = new Set(completedLines);
+    
+    if (newCompletedLines.has(currentFocusedLine)) {
+      // Jika sudah completed, uncheck
+      newCompletedLines.delete(currentFocusedLine);
+    } else {
+      // Jika belum completed, check dan pindah ke line berikutnya
+      newCompletedLines.add(currentFocusedLine);
+      
+      // Cari line berikutnya yang belum completed
+      let nextLine = currentFocusedLine + 1;
+      while (nextLine < recordingScript.length && newCompletedLines.has(nextLine)) {
+        nextLine++;
+      }
+      
+      if (nextLine < recordingScript.length) {
+        setCurrentFocusedLine(nextLine);
+      }
     }
-  }, [recordingTime, isRecording]);
+    
+    setCompletedLines(newCompletedLines);
+  };
+
+  const toggleLineCompletion = (lineIndex) => {
+    const newCompletedLines = new Set(completedLines);
+    if (newCompletedLines.has(lineIndex)) {
+      newCompletedLines.delete(lineIndex);
+    } else {
+      newCompletedLines.add(lineIndex);
+      
+      // Cari line berikutnya yang belum completed
+      let nextLine = lineIndex + 1;
+      while (nextLine < recordingScript.length && newCompletedLines.has(nextLine)) {
+        nextLine++;
+      }
+      
+      if (nextLine < recordingScript.length) {
+        setCurrentFocusedLine(nextLine);
+      }
+    }
+    setCompletedLines(newCompletedLines);
+  };
 
   const startRecording = async () => {
     try {
@@ -79,7 +125,8 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
       setAudioBlob(null);
       setRecordingTime(0);
       setRecordingDuration(0);
-      setCurrentLine(0);
+      setCompletedLines(new Set());
+      setCurrentFocusedLine(0);
 
       // Request microphone permission
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -131,7 +178,7 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         setRecordingTime(elapsed);
         
-        // Auto-stop after 70 seconds for safety (extra 10 seconds buffer)
+        // Auto-stop after 70 seconds for safety
         if (elapsed >= 70) {
           stopRecording();
         }
@@ -242,7 +289,8 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
     setRecordingTime(0);
     setRecordingDuration(0);
     setError('');
-    setCurrentLine(0);
+    setCompletedLines(new Set());
+    setCurrentFocusedLine(0);
   };
 
   const replacePlaceholders = (text) => {
@@ -258,6 +306,10 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
       .replace('[NAMA LENGKAP DOSEN]', dosen.nama)
       .replace('[TANGGAL SEKARANG]', formattedDate);
   };
+
+  const progressPercentage = recordingScript.length > 0 
+    ? (completedLines.size / recordingScript.length) * 100 
+    : 0;
 
   return (
     <div className="fixed inset-0 backdrop-blur drop-shadow-2xl bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -288,14 +340,9 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
               <div className="flex justify-between items-center p-4 bg-gray-50 border-b border-gray-200">
                 <h3 className="font-medium text-gray-800">Script Panduan</h3>
                 <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setAutoScroll(!autoScroll)}
-                    className={`text-xs px-2 py-1 rounded ${
-                      autoScroll ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    Auto-scroll: {autoScroll ? 'ON' : 'OFF'}
-                  </button>
+                  <span className="text-xs text-gray-500">
+                    {completedLines.size} / {recordingScript.length} selesai
+                  </span>
                   <button
                     onClick={() => setShowScript(false)}
                     className="text-gray-400 hover:text-gray-600"
@@ -304,40 +351,97 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
                   </button>
                 </div>
               </div>
+
+              {/* Progress Bar */}
+              <div className="px-4 py-2 bg-gray-25 border-b border-gray-200">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${progressPercentage}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Keyboard Instructions */}
+              {isRecording && (
+                <div className="px-4 py-2 bg-blue-50 border-b border-gray-200">
+                  <div className="flex items-center space-x-4 text-xs text-blue-600">
+                    <div className="flex items-center space-x-1">
+                      <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded">Enter</kbd>
+                      <span>Ceklis line</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded">↑↓</kbd>
+                      <span>Navigasi</span>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div 
-                ref={scriptRef}
+                ref={scriptContainerRef}
                 className="flex-1 overflow-y-auto p-4 bg-gray-25"
               >
                 <div className="space-y-3">
                   {recordingScript.map((line, index) => (
                     <div
                       key={index}
+                      id={`line-${index}`}
                       ref={el => lineRefs.current[index] = el}
-                      className={`p-3 rounded-lg transition-all duration-300 ${
-                        index === currentLine && isRecording
-                          ? 'bg-blue-100 border-2 border-blue-300 shadow-sm'
-                          : 'bg-white border border-gray-200'
-                      } ${
-                        index < currentLine 
-                          ? 'opacity-60' 
-                          : 'opacity-100'
+                      className={`p-3 rounded-lg transition-all duration-300 cursor-pointer group ${
+                        completedLines.has(index)
+                          ? 'bg-green-50 border-2 border-green-200'
+                          : currentFocusedLine === index && isRecording
+                          ? 'bg-blue-50 border-2 border-blue-300 shadow-md'
+                          : 'bg-white border border-gray-200 hover:border-blue-300'
                       }`}
+                      onClick={() => isRecording && (setCurrentFocusedLine(index), toggleLineCompletion(index))}
                     >
                       <div className="flex items-start space-x-3">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                          index === currentLine && isRecording
+                        {/* Checkbox */}
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                          completedLines.has(index)
+                            ? 'bg-green-500 text-white'
+                            : currentFocusedLine === index && isRecording
                             ? 'bg-blue-500 text-white'
-                            : index < currentLine
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-500'
+                            : 'bg-gray-100 text-gray-400 group-hover:bg-gray-200'
+                        }`}>
+                          {completedLines.has(index) ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <div className={`w-2 h-2 rounded-full ${
+                              currentFocusedLine === index && isRecording ? 'bg-white' : 'bg-gray-400'
+                            }`} />
+                          )}
+                        </div>
+                        
+                        {/* Line Number */}
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                          currentFocusedLine === index && isRecording
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-blue-100 text-blue-700'
                         }`}>
                           {index + 1}
                         </div>
-                        <p className="text-sm text-gray-700 leading-relaxed">
+                        
+                        {/* Text */}
+                        <p className="text-sm text-gray-700 leading-relaxed flex-1">
                           {replacePlaceholders(line)}
                         </p>
                       </div>
+                      
+                      {/* Instruction */}
+                      {isRecording && !completedLines.has(index) && (
+                        <div className="mt-2 flex items-center space-x-2 text-xs text-blue-600">
+                          <CheckCircle className="h-3 w-3" />
+                          <span>
+                            {currentFocusedLine === index 
+                              ? "Tekan Enter untuk ceklis →" 
+                              : "Klik atau gunakan keyboard"
+                            }
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -393,9 +497,30 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
                         {formatTime(recordingTime)}
                       </div>
                       <p className="text-gray-600 mb-2 font-medium">Sedang merekam...</p>
-                      <p className="text-sm text-gray-500 mb-4">
-                        Ikuti script panduan untuk hasil terbaik
-                      </p>
+                      
+                      {/* Progress Indicator */}
+                      <div className="bg-blue-50 rounded-lg p-3 mb-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs font-medium text-blue-800">Progress Script</span>
+                          <span className="text-xs text-blue-600">
+                            {completedLines.size} / {recordingScript.length} selesai
+                          </span>
+                        </div>
+                        <div className="w-full bg-blue-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${progressPercentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      {/* Current Focus Info */}
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                        <div className="text-xs text-green-700">
+                          <strong>Line aktif:</strong> {currentFocusedLine + 1}. {recordingScript[currentFocusedLine].substring(0, 50)}...
+                        </div>
+                      </div>
+
                       <button
                         onClick={stopRecording}
                         className="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-lg flex items-center space-x-2 mx-auto text-lg"
@@ -445,32 +570,15 @@ export default function RekamSuaraModal({ dosen, onClose, onSuccess }) {
                   )}
                 </div>
 
-                {/* Progress Indicator */}
-                {isRecording && (
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-blue-800">Progress</span>
-                      <span className="text-sm text-blue-600">
-                        {currentLine + 1} / {recordingScript.length}
-                      </span>
-                    </div>
-                    <div className="w-full bg-blue-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${((currentLine + 1) / recordingScript.length) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Instructions */}
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <h4 className="font-medium text-yellow-800 mb-2">Panduan Rekaman:</h4>
                   <ul className="text-sm text-yellow-700 space-y-1">
                     <li>• <strong>Baca natural</strong> dengan kecepatan sedang</li>
+                    <li>• <strong>Enter</strong> - Ceklis line saat ini</li>
+                    <li>• <strong>↑/↓</strong> - Navigasi antar line</li>
+                    <li>• <strong>Klik</strong> - Pilih dan ceklis line</li>
                     <li>• <strong>Volume konsisten</strong> - tidak terlalu keras atau pelan</li>
-                    <li>• <strong>Jeda seperlunya</strong> di antara kalimat</li>
-                    <li>• <strong>Lafal jelas</strong> untuk setiap kata</li>
                     <li>• <strong>Target durasi</strong> sekitar 1 menit</li>
                   </ul>
                 </div>

@@ -87,6 +87,8 @@ func main() {
 		api.POST("/dosen/:id/rekam-suara", handlers.RekamSuaraDosen)
 		api.GET("/rekaman/mulai/:jadwal_id", handlers.MulaiRekaman)
 		api.GET("/rekaman/hentikan/:jadwal_id", handlers.HentikanRekaman)
+
+		api.GET("/audio/:filename", handlers.ServeAudioFile)
 	}
 
 	// Health check

@@ -305,7 +305,8 @@ func GetRecordingSchedule(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{
         "jadwal_id": id,
         "recording_schedule": recordingTimes,
-        "duration_seconds": 150, // 2.5 menit
+        "duration_seconds": 60, // 1 menit
+        "total_sessions": 5,    // 5 session 
     })
 }
 
@@ -323,19 +324,19 @@ func ExecuteScheduledRecording(jadwal models.Jadwal) {
     // Buat direktori recordings jika belum ada
     os.MkdirAll("recordings", 0755)
 
-    // Lakukan 2x rekaman dengan interval
-    for session := 1; session <= 2; session++ {
+    // Lakukan 5x rekaman tanpa jeda, masing-masing 1 menit
+    for session := 1; session <= 5; session++ {
         timestamp := time.Now().Format("20060102_150405")
         filename := fmt.Sprintf("recording_%s_session%d_%s.wav", jadwal.ID, session, timestamp)
         filepath := filepath.Join("recordings", filename)
 
         fmt.Printf("Starting recording session %d for jadwal %s\n", session, jadwal.ID)
 
-        // Rekam audio menggunakan ffmpeg (2 menit 30 detik)
+        // Rekam audio menggunakan ffmpeg (1 menit = 60 detik)
         cmd := exec.Command("ffmpeg", 
             "-f", "dshow",               // Windows directshow
             "-i", "audio=Microphone",    // Audio input device
-            "-t", "150",                 // Duration 150 detik (2.5 menit)
+            "-t", "60",                  // Duration 60 detik (1 menit)
             "-acodec", "pcm_s16le",      // Audio codec
             "-ar", "16000",              // Sample rate
             "-ac", "1",                  // Mono audio
@@ -365,7 +366,7 @@ func ExecuteScheduledRecording(jadwal models.Jadwal) {
             Rangkuman:            analysis.Analysis.Summary,
             SkorEfektivitas:      float64(analysis.Analysis.Effectiveness) / 100.0,
             PathFileAudio:        filepath,
-            WaktuPemrosesan:      0, // Bisa dihitung dari waktu proses
+            WaktuPemrosesan:      0,
         }
 
         result := db.Create(&evaluasi)
@@ -375,10 +376,7 @@ func ExecuteScheduledRecording(jadwal models.Jadwal) {
             fmt.Printf("Evaluation saved successfully for session %d\n", session)
         }
 
-        // Tunggu 30 detik sebelum rekaman berikutnya (jika bukan session terakhir)
-        if session < 2 {
-            time.Sleep(30 * time.Second)
-        }
+        // TANPA JEDA - langsung lanjut ke rekaman berikutnya
     }
 
     // Kembalikan status jadwal
@@ -432,9 +430,13 @@ func sendAudioForAnalysis(filepath string) (*AudioAnalysisResponse, error) {
 }
 
 func calculateRecordingTimes(startTime string) []string {
+    // 5x rekaman dimulai 10 menit setelah jam mulai, dengan interval 1 menit
     return []string{
-        addMinutes(startTime, 10),  // 10 menit setelah mulai
-        addMinutes(startTime, 13),  // 13 menit setelah mulai
+        addMinutes(startTime, 10),  // Session 1: 10 menit setelah mulai
+        addMinutes(startTime, 11),  // Session 2: 11 menit setelah mulai  
+        addMinutes(startTime, 12),  // Session 3: 12 menit setelah mulai
+        addMinutes(startTime, 13),  // Session 4: 13 menit setelah mulai
+        addMinutes(startTime, 14),  // Session 5: 14 menit setelah mulai
     }
 }
 

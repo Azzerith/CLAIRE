@@ -267,8 +267,9 @@ export const APP_CONFIG = {
     APP_TITLE: import.meta.env.VITE_APP_TITLE || 'Sistem CLAIRE',
     APP_VERSION: import.meta.env.VITE_APP_VERSION || '1.0.0',
     AUTO_RECORDING_ENABLED: import.meta.env.VITE_AUTO_RECORDING_ENABLED !== 'false',
-    RECORDING_DURATION: 150, // 2.5 menit dalam detik
-    RECORDING_DELAY: 600, // 10 menit dalam detik
+    RECORDING_DURATION: 60, // 1 menit dalam detik
+    RECORDING_DELAY: 600, // 10 menit dalam detik 
+    RECORDING_SESSIONS: 5, // 5 session
 };
 
 export default api;

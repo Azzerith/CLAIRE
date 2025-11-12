@@ -49,23 +49,20 @@ export default function JadwalList({ jadwal, onEdit, onUpdate }) {
     return days[new Date().getDay()];
   };
 
-  const calculateRecordingTimes = (startTime) => {
-    // Format: "08:00" -> rekaman pada 08:10 dan 08:15
-    const [hours, minutes] = startTime.split(':').map(Number);
-    
-    // Rekaman pertama: 10 menit setelah mulai (08:10)
-    const firstRecording = new Date();
-    firstRecording.setHours(hours, minutes + 10, 0, 0);
-    
-    // Rekaman kedua: 13 menit 30 detik setelah rekaman pertama (08:23:30)
-    const secondRecording = new Date(firstRecording);
-    secondRecording.setMinutes(secondRecording.getMinutes() + 3, 30);
-    
-    return [
-      firstRecording.toTimeString().slice(0, 5),
-      secondRecording.toTimeString().slice(0, 5)
-    ];
-  };
+
+const calculateRecordingTimes = (startTime) => {
+  const [hours, minutes] = startTime.split(':').map(Number);
+  
+  // 5x rekaman dimulai 10 menit setelah jam mulai, dengan interval 1 menit
+  const recordingTimes = [];
+  for (let i = 0; i < 5; i++) {
+      const recordingTime = new Date();
+      recordingTime.setHours(hours, minutes + 10 + i, 0, 0);
+      recordingTimes.push(recordingTime.toTimeString().slice(0, 5));
+  }
+  
+  return recordingTimes;
+};
 
   const startAutoRecording = async (jadwalId) => {
     console.log(`Auto recording started for jadwal: ${jadwalId}`);

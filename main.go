@@ -88,7 +88,7 @@ func main() {
 		api.GET("/rekaman/mulai/:jadwal_id", handlers.MulaiRekaman)
 		api.GET("/rekaman/hentikan/:jadwal_id", handlers.HentikanRekaman)
 
-		api.GET("/sampel_suara/:filename", handlers.ServeAudioFile)
+		api.GET("/sampel_suara/:dosenFolder/:filename", handlers.ServeAudioFile)
 	}
 
 	// Health check

@@ -20,15 +20,18 @@ func EnsureDir(dirPath string) error {
 }
 
 // SaveAudioFile menyimpan file audio dan mengembalikan path-nya
-func SaveAudioFile(file *multipart.FileHeader, uploadDir string) (string, error) {
+func SaveAudioFile(file *multipart.FileHeader, uploadDir string, dosenFolder string) (string, error) {
+    // Buat path direktori dosen
+    dosenDir := filepath.Join(uploadDir, dosenFolder)
+    
     // Buat direktori jika belum ada
-    if err := EnsureDir(uploadDir); err != nil {
-        return "", fmt.Errorf("gagal membuat direktori: %v", err)
+    if err := EnsureDir(dosenDir); err != nil {
+        return "", fmt.Errorf("gagal membuat direktori dosen: %v", err)
     }
 
     // Validasi ekstensi file
     ext := strings.ToLower(filepath.Ext(file.Filename))
-    allowedExtensions := []string{".wav", ".webm", ".mp3", ".ogg"}
+    allowedExtensions := []string{".wav", ".webm", ".mp3", ".ogg", ".m4a", ".flac"}
     
     isValidExtension := false
     for _, allowedExt := range allowedExtensions {
@@ -45,7 +48,7 @@ func SaveAudioFile(file *multipart.FileHeader, uploadDir string) (string, error)
     // Generate nama file unik dengan ekstensi .wav
     fileID := uuid.New().String()
     filename := fileID + ".wav" // Selalu simpan sebagai WAV untuk konsistensi
-    filePath := filepath.Join(uploadDir, filename)
+    filePath := filepath.Join(dosenDir, filename)
 
     // Buka file source
     src, err := file.Open()
@@ -82,13 +85,27 @@ func DeleteAudioFile(filePath string) error {
     return os.Remove(filePath)
 }
 
+// DeleteDosenFolder menghapus seluruh folder dosen
+func DeleteDosenFolder(uploadDir string, dosenFolder string) error {
+    if dosenFolder == "" {
+        return nil
+    }
+    
+    dosenDir := filepath.Join(uploadDir, dosenFolder)
+    if _, err := os.Stat(dosenDir); os.IsNotExist(err) {
+        return nil // Folder tidak ada, tidak perlu dihapus
+    }
+    
+    return os.RemoveAll(dosenDir)
+}
+
 // GetAudioFileURL mengembalikan URL untuk mengakses file audio
 func GetAudioFileURL(filePath string) string {
     if filePath == "" {
         return ""
     }
     
-    return "/api/v1/audio/" + filepath.Base(filePath)
+    return "/api/v1/audio/" + filepath.Base(filepath.Dir(filePath)) + "/" + filepath.Base(filePath)
 }
 
 // CheckAudioFileSize memeriksa ukuran file audio
@@ -97,4 +114,28 @@ func CheckAudioFileSize(file *multipart.FileHeader, maxSize int64) error {
         return fmt.Errorf("ukuran file melebihi batas maksimal %dMB", maxSize/(1024*1024))
     }
     return nil
+}
+
+// GenerateDosenFolderName menghasilkan nama folder untuk dosen
+func GenerateDosenFolderName(nama string, gelar string) string {
+    // Bersihkan nama dan gelar dari karakter yang tidak valid untuk nama folder
+    cleanName := strings.ReplaceAll(strings.TrimSpace(nama), " ", "_")
+    cleanGelar := strings.ReplaceAll(strings.TrimSpace(gelar), " ", "_")
+    
+    // Gabungkan nama dan gelar
+    folderName := cleanName
+    if cleanGelar != "" {
+        folderName = folderName + "_" + cleanGelar
+    }
+    
+    // Hapus karakter non-alphanumeric kecuali underscore
+    var result strings.Builder
+    for _, char := range folderName {
+        if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || 
+           (char >= '0' && char <= '9') || char == '_' {
+            result.WriteRune(char)
+        }
+    }
+    
+    return result.String()
 }

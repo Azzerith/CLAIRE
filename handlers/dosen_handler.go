@@ -16,8 +16,8 @@ import (
 
 // Konstanta untuk path penyimpanan
 const (
-	AudioUploadDir = "sampel_suara"
-	MaxUploadSize  = 10 << 20 // 10MB
+	AudioUploadDirdosen = "sampel_suara"
+	MaxUploadSizedosen  = 10 << 20 // 10MB
 )
 
 func BuatDosen(c *gin.Context) {
@@ -38,13 +38,13 @@ func BuatDosen(c *gin.Context) {
 	// Handle file upload jika ada
 	if err == nil && file != nil {
 		// Validasi size file
-		if err := utils.CheckAudioFileSize(file, MaxUploadSize); err != nil {
+		if err := utils.CheckAudioFileSize(file, MaxUploadSizedosen); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
 		// Simpan file audio
-		pathSampleSuara, err = utils.SaveAudioFile(file, AudioUploadDir, dosenFolder)
+		pathSampleSuara, err = utils.SaveAudioFile(file, AudioUploadDirdosen, dosenFolder)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Gagal menyimpan file audio: %v", err)})
 			return
@@ -69,7 +69,7 @@ func BuatDosen(c *gin.Context) {
 		if pathSampleSuara != "" {
 			utils.DeleteAudioFile(pathSampleSuara)
 			// Hapus folder dosen jika kosong
-			utils.DeleteDosenFolder(AudioUploadDir, dosenFolder)
+			utils.DeleteDosenFolder(AudioUploadDirdosen, dosenFolder)
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
 		return
@@ -149,7 +149,7 @@ func UpdateDosen(c *gin.Context) {
 	// Handle file upload jika ada file baru
 	if err == nil && file != nil {
 		// Validasi size file
-		if err := utils.CheckAudioFileSize(file, MaxUploadSize); err != nil {
+		if err := utils.CheckAudioFileSize(file, MaxUploadSizedosen); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -166,7 +166,7 @@ func UpdateDosen(c *gin.Context) {
 		}
 
 		// Simpan file baru
-		pathSampleSuara, err := utils.SaveAudioFile(file, AudioUploadDir, dosenFolder)
+		pathSampleSuara, err := utils.SaveAudioFile(file, AudioUploadDirdosen, dosenFolder)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Gagal menyimpan file audio: %v", err)})
 			return
@@ -205,7 +205,7 @@ func HapusDosen(c *gin.Context) {
 
 	// Hapus folder dosen jika ada
 	if dosen.FolderDosen != "" {
-		utils.DeleteDosenFolder(AudioUploadDir, dosen.FolderDosen)
+		utils.DeleteDosenFolder(AudioUploadDirdosen, dosen.FolderDosen)
 	}
 
 	// Hapus dari database
@@ -229,7 +229,7 @@ func RekamSuaraDosen(c *gin.Context) {
     dosenID := c.Param("id")
     
     // Validasi size file
-    if err := utils.CheckAudioFileSize(file, MaxUploadSize); err != nil {
+    if err := utils.CheckAudioFileSize(file, MaxUploadSizedosen); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
     }
@@ -249,7 +249,7 @@ func RekamSuaraDosen(c *gin.Context) {
     }
 
     // Simpan file audio baru
-    pathSampleSuara, err := utils.SaveAudioFile(file, AudioUploadDir, dosen.FolderDosen)
+    pathSampleSuara, err := utils.SaveAudioFile(file, AudioUploadDirdosen, dosen.FolderDosen)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Gagal menyimpan file audio: %v", err)})
         return
@@ -282,11 +282,11 @@ func ServeAudioFile(c *gin.Context) {
 		return
 	}
 
-	filePath := filepath.Join(AudioUploadDir, dosenFolder, filename)
+	filePath := filepath.Join(AudioUploadDirdosen, dosenFolder, filename)
 
 	// Validasi untuk mencegah directory traversal
 	cleanPath := filepath.Clean(filePath)
-	if !strings.HasPrefix(cleanPath, AudioUploadDir) {
+	if !strings.HasPrefix(cleanPath, AudioUploadDirdosen) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Akses file tidak diizinkan"})
 		return
 	}

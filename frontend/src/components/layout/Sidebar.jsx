@@ -20,7 +20,7 @@ export default function Sidebar({ open, setOpen }) {
       {/* Mobile overlay */}
       {open && (
         <div 
-          className="fixed inset-0 bg-indigo-500 bg-opacity-20 z-20 md:hidden"
+          className="fixed inset-0 backdrop-blur bg-opacity-20 z-20 md:hidden"
           onClick={() => setOpen(false)}
         />
       )}

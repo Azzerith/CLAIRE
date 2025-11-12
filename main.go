@@ -48,7 +48,7 @@ func main() {
 	// CORS middleware
 	router.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
 		if c.Request.Method == "OPTIONS" {
@@ -68,27 +68,58 @@ func main() {
 		api.GET("/dosen/:id", handlers.DapatkanDosen)
 		api.PUT("/dosen/:id", handlers.UpdateDosen)
 		api.DELETE("/dosen/:id", handlers.HapusDosen)
+		api.POST("/dosen/:id/rekam-suara", handlers.RekamSuaraDosen)
 
-		// Jadwal routes
+		// Jadwal routes - Diperbarui dengan endpoint baru
 		api.POST("/jadwal", handlers.BuatJadwal)
 		api.GET("/jadwal", handlers.DapatkanSemuaJadwal)
 		api.GET("/jadwal/:id", handlers.DapatkanJadwal)
 		api.PUT("/jadwal/:id", handlers.UpdateJadwal)
 		api.DELETE("/jadwal/:id", handlers.HapusJadwal)
 		api.GET("/jadwal/sedang-rekam", handlers.DapatkanJadwalSedangRekam)
+		api.GET("/jadwal/hari-ini/aktif", handlers.DapatkanJadwalAktifHariIni)
+		api.GET("/jadwal/hari/:hari", handlers.DapatkanJadwalByHari)
+		api.POST("/jadwal/:id/mulai-rekam", handlers.MulaiRekaman)
+		api.POST("/jadwal/:id/hentikan-rekam", handlers.HentikanRekaman)
+		api.POST("/jadwal/:id/auto-record", handlers.MulaiRekamanOtomatis)
+		api.GET("/jadwal/:id/recording-schedule", handlers.GetRecordingSchedule)
+		api.PATCH("/jadwal/:id/status", handlers.UpdateStatusJadwal)
 
-		// Evaluasi routes
+		// Evaluasi routes - Diperbarui dengan endpoint baru
 		api.POST("/evaluasi", handlers.BuatEvaluasi)
 		api.GET("/evaluasi", handlers.DapatkanSemuaEvaluasi)
 		api.GET("/evaluasi/:id", handlers.DapatkanEvaluasi)
+		api.PUT("/evaluasi/:id", handlers.UpdateEvaluasi)
+		api.DELETE("/evaluasi/:id", handlers.HapusEvaluasi)
 		api.GET("/evaluasi/jadwal/:jadwal_id", handlers.DapatkanEvaluasiByJadwal)
+		api.POST("/evaluasi/:id/upload-audio", handlers.UploadAudioEvaluasi)
+		api.POST("/evaluasi/analisis", handlers.SimpanHasilAnalisis)
+		api.GET("/evaluasi/statistik", handlers.GetStatistikEvaluasi)
+		api.GET("/evaluasi/recent", handlers.GetEvaluasiRecent)
 
-		// Rekaman suara routes
-		api.POST("/dosen/:id/rekam-suara", handlers.RekamSuaraDosen)
-		api.GET("/rekaman/mulai/:jadwal_id", handlers.MulaiRekaman)
-		api.GET("/rekaman/hentikan/:jadwal_id", handlers.HentikanRekaman)
+		// Audio file routes
+		api.GET("/audio/:dosenFolder/:filename", handlers.ServeAudioFile)
+		api.GET("/audio-evaluasi/:folderName/:filename", handlers.ServeAudioEvaluasi)
+		api.POST("/audio/upload", handlers.UploadAudioFile)
 
-		api.GET("/sampel_suara/:dosenFolder/:filename", handlers.ServeAudioFile)
+		// Recording routes (untuk service rekaman otomatis)
+		api.POST("/recording/scheduled/start/:jadwal_id", handlers.StartScheduledRecording)
+		api.POST("/recording/scheduled/stop/:jadwal_id", handlers.StopScheduledRecording)
+		api.GET("/recording/active", handlers.GetActiveRecordings)
+		api.GET("/recording/status/:jadwal_id", handlers.GetRecordingStatus)
+		api.POST("/recording/process-analysis", handlers.ProcessAudioAnalysis)
+
+		// Dashboard routes
+		api.GET("/dashboard/overview", handlers.GetDashboardOverview)
+		api.GET("/dashboard/activities", handlers.GetRecentActivities)
+		api.GET("/dashboard/stats", handlers.GetDashboardStats)
+		api.GET("/dashboard/upcoming-jadwal", handlers.GetUpcomingJadwal)
+
+		// System routes
+		api.GET("/system/health", handlers.GetSystemHealth)
+		api.GET("/system/config", handlers.GetSystemConfig)
+		api.GET("/system/check-python-backend", handlers.CheckPythonBackend)
+		api.GET("/system/storage-info", handlers.GetStorageInfo)
 	}
 
 	// Health check
@@ -98,6 +129,23 @@ func main() {
 			"layanan":   "CLAIRE Backend",
 			"versi":     "1.0.0",
 			"database":  "MySQL",
+			"timestamp": time.Now().Format(time.RFC3339),
+		})
+	})
+
+	// Root endpoint
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message":   "CLAIRE Backend API",
+			"version":   "1.0.0",
+			"endpoints": map[string]string{
+				"dosen":      "/api/v1/dosen",
+				"jadwal":     "/api/v1/jadwal",
+				"evaluasi":   "/api/v1/evaluasi",
+				"dashboard":  "/api/v1/dashboard",
+				"recording":  "/api/v1/recording",
+				"system":     "/api/v1/system",
+			},
 		})
 	})
 

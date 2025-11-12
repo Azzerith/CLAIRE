@@ -139,3 +139,37 @@ func GenerateDosenFolderName(nama string, gelar string) string {
     
     return result.String()
 }
+
+// DeleteFolderIfEmpty menghapus folder jika kosong
+func DeleteFolderIfEmpty(dirPath string) error {
+    if dirPath == "" {
+        return nil
+    }
+    
+    // Cek apakah folder exists
+    if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+        return nil // Folder tidak ada
+    }
+    
+    // Baca isi folder
+    entries, err := os.ReadDir(dirPath)
+    if err != nil {
+        return err
+    }
+    
+    // Hapus hanya jika folder kosong
+    if len(entries) == 0 {
+        return os.Remove(dirPath)
+    }
+    
+    return nil
+}
+
+// GetFileSize mengembalikan ukuran file dalam bytes
+func GetFileSize(filePath string) (int64, error) {
+    fileInfo, err := os.Stat(filePath)
+    if err != nil {
+        return 0, err
+    }
+    return fileInfo.Size(), nil
+}

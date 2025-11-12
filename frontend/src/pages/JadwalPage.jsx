@@ -26,15 +26,14 @@ export default function JadwalPage() {
     setEditingJadwal(null);
   };
 
-  // Stats calculation
+  // Stats calculation - disesuaikan dengan status baru
   const stats = {
     total: jadwal?.length || 0,
-    active: jadwal?.filter(item => item.status === 'active' || new Date(item.tanggal) >= new Date())?.length || 0,
-    completed: jadwal?.filter(item => item.status === 'completed' || new Date(item.tanggal) < new Date())?.length || 0,
+    active: jadwal?.filter(item => item.status === 'aktif' || item.status === 'merekam')?.length || 0,
+    completed: jadwal?.filter(item => item.status === 'selesai')?.length || 0,
     today: jadwal?.filter(item => {
-      const today = new Date().toDateString();
-      const jadwalDate = new Date(item.tanggal).toDateString();
-      return jadwalDate === today;
+      const today = new Date().toLocaleDateString('id-ID', { weekday: 'long' }).toUpperCase();
+      return item.hari === today;
     })?.length || 0
   };
 

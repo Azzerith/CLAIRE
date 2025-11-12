@@ -1,4 +1,3 @@
-// components/JadwalList.jsx
 import { useState, useEffect } from 'react';
 import { Edit2, Trash2, Mic, Square, Calendar, User, Clock, MapPin, Play, Pause, Radio, CheckCircle } from 'lucide-react';
 import { jadwalAPI } from '../../services/api';
@@ -6,15 +5,12 @@ import { jadwalAPI } from '../../services/api';
 export default function JadwalList({ jadwal, onEdit, onUpdate }) {
   const [loading, setLoading] = useState(null);
   const [recordingAction, setRecordingAction] = useState(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Update waktu setiap menit
+  // Auto-refresh status setiap menit
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTime(new Date());
-      // Auto-refresh data setiap 30 detik untuk update status
       onUpdate();
-    }, 30000);
+    }, 60000); // Refresh setiap 1 menit
 
     return () => clearInterval(interval);
   }, [onUpdate]);
@@ -63,22 +59,6 @@ export default function JadwalList({ jadwal, onEdit, onUpdate }) {
     return hariMap[hari] || hari;
   };
 
-  // Fungsi untuk mengecek apakah hari ini sama dengan hari jadwal
-  const isToday = (hari) => {
-    const today = currentTime.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
-    const hariMap = {
-      'MONDAY': 'SENIN',
-      'TUESDAY': 'SELASA',
-      'WEDNESDAY': 'RABU',
-      'THURSDAY': 'KAMIS',
-      'FRIDAY': 'JUMAT',
-      'SATURDAY': 'SABTU',
-      'SUNDAY': 'MINGGU'
-    };
-    return hariMap[today] === hari;
-  };
-
-  // Fungsi untuk mendapatkan status config berdasarkan status dari backend
   const getStatusConfig = (jadwalItem) => {
     switch (jadwalItem.status) {
       case 'merekam':
@@ -95,7 +75,7 @@ export default function JadwalList({ jadwal, onEdit, onUpdate }) {
           color: 'bg-emerald-100 border-emerald-200',
           textColor: 'text-emerald-700',
           icon: Play,
-          text: 'Berlangsung',
+          text: 'Sedang Berlangsung',
           dotColor: 'bg-emerald-500 animate-pulse'
         };
       
@@ -108,7 +88,8 @@ export default function JadwalList({ jadwal, onEdit, onUpdate }) {
           dotColor: 'bg-gray-500'
         };
       
-      default: // terjadwal
+      case 'terjadwal':
+      default:
         return {
           color: 'bg-blue-100 border-blue-200',
           textColor: 'text-blue-700',
@@ -119,7 +100,7 @@ export default function JadwalList({ jadwal, onEdit, onUpdate }) {
     }
   };
 
-  // Fungsi untuk mengecek apakah bisa merekam (hanya pada jadwal aktif)
+  // Cek apakah bisa merekam (hanya untuk jadwal aktif yang tidak sedang merekam)
   const canRecord = (jadwalItem) => {
     return jadwalItem.status === 'aktif' && !jadwalItem.sedang_rekam;
   };
@@ -129,16 +110,11 @@ export default function JadwalList({ jadwal, onEdit, onUpdate }) {
       {jadwal.map((j) => {
         const statusConfig = getStatusConfig(j);
         const StatusIcon = statusConfig.icon;
-        const isJadwalHariIni = isToday(j.hari);
 
         return (
           <div 
             key={j.id} 
-            className={`bg-white rounded-xl shadow-sm border-2 p-6 hover:shadow-md transition-all duration-300 ${
-              j.status === 'aktif' ? 'border-emerald-200 ring-1 ring-emerald-100' :
-              j.status === 'merekam' ? 'border-red-200 ring-1 ring-red-100' :
-              'border-gray-200 hover:border-blue-200'
-            }`}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-200 transition-all duration-300"
           >
             {/* Header dengan status dan tombol aksi */}
             <div className="flex justify-between items-start mb-4">
@@ -162,8 +138,8 @@ export default function JadwalList({ jadwal, onEdit, onUpdate }) {
               </div>
               
               <div className="flex space-x-1 ml-4">
-                {/* Tombol Rekam - hanya tampil jika status aktif */}
-                {canRecord(j) && (
+                {/* Tombol Rekam - hanya muncul untuk jadwal aktif */}
+                {/* {canRecord(j) && (
                   <button
                     onClick={() => handleRecording(j.id, 'start')}
                     disabled={recordingAction === `start-${j.id}`}
@@ -173,9 +149,9 @@ export default function JadwalList({ jadwal, onEdit, onUpdate }) {
                     <Mic className="h-4 w-4" />
                     <span>{recordingAction === `start-${j.id}` ? '...' : 'Rekam'}</span>
                   </button>
-                )}
+                )} */}
                 
-                {/* Tombol Stop Rekam */}
+                {/* Tombol Stop Rekam - hanya muncul untuk jadwal yang sedang merekam */}
                 {j.sedang_rekam && (
                   <button
                     onClick={() => handleRecording(j.id, 'stop')}
@@ -211,17 +187,10 @@ export default function JadwalList({ jadwal, onEdit, onUpdate }) {
             
             {/* Detail Jadwal */}
             <div className="space-y-3 mb-4">
-              {/* Hari dengan indicator hari ini */}
+              {/* Hari */}
               <div className="flex items-center space-x-3 text-gray-600">
                 <Calendar className="h-4 w-4 text-blue-500" />
-                <span className="text-sm font-medium">
-                  {getHariName(j.hari)}
-                  {isJadwalHariIni && (
-                    <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
-                      Hari Ini
-                    </span>
-                  )}
-                </span>
+                <span className="text-sm font-medium">{getHariName(j.hari)}</span>
               </div>
               
               {/* Waktu */}
@@ -248,7 +217,7 @@ export default function JadwalList({ jadwal, onEdit, onUpdate }) {
               </span>
               
               {/* Recording Indicator */}
-              {j.sedang_rekam && (
+              {j.status === 'aktif' && (
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                   <span className="text-xs text-red-600 font-medium">LIVE</span>

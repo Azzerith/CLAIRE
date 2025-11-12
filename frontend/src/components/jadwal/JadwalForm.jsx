@@ -6,8 +6,9 @@ export default function JadwalForm({ jadwal, onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
     nama_matkul: jadwal?.nama_matkul || '',
     dosen_id: jadwal?.dosen_id || '',
-    waktu_mulai: jadwal?.waktu_mulai ? new Date(jadwal.waktu_mulai).toISOString().slice(0, 16) : '',
-    waktu_selesai: jadwal?.waktu_selesai ? new Date(jadwal.waktu_selesai).toISOString().slice(0, 16) : '',
+    hari: jadwal?.hari || '',
+    waktu_mulai: jadwal?.waktu_mulai || '',
+    waktu_selesai: jadwal?.waktu_selesai || '',
     ruangan: jadwal?.ruangan || '',
   });
   
@@ -15,6 +16,17 @@ export default function JadwalForm({ jadwal, onSuccess, onCancel }) {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Daftar hari
+  const hariOptions = [
+    { value: 'SENIN', label: 'Senin' },
+    { value: 'SELASA', label: 'Selasa' },
+    { value: 'RABU', label: 'Rabu' },
+    { value: 'KAMIS', label: 'Kamis' },
+    { value: 'JUMAT', label: 'Jumat' },
+    { value: 'SABTU', label: 'Sabtu' },
+    { value: 'MINGGU', label: 'Minggu' },
+  ];
 
   useEffect(() => {
     const fetchDosen = async () => {
@@ -36,16 +48,22 @@ export default function JadwalForm({ jadwal, onSuccess, onCancel }) {
     setLoading(true);
     setError('');
 
-    // Validasi waktu
-    if (new Date(formData.waktu_selesai) <= new Date(formData.waktu_mulai)) {
-      setError('Waktu selesai harus setelah waktu mulai');
+    // Validasi field required
+    if (!formData.hari) {
+      setError('Hari harus dipilih');
       setLoading(false);
       return;
     }
 
-    // Validasi waktu tidak boleh di masa lalu
-    if (new Date(formData.waktu_mulai) < new Date()) {
-      setError('Waktu jadwal tidak boleh di masa lalu');
+    // Validasi waktu
+    if (!formData.waktu_mulai || !formData.waktu_selesai) {
+      setError('Waktu mulai dan selesai harus diisi');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.waktu_selesai <= formData.waktu_mulai) {
+      setError('Waktu selesai harus setelah waktu mulai');
       setLoading(false);
       return;
     }
@@ -53,8 +71,7 @@ export default function JadwalForm({ jadwal, onSuccess, onCancel }) {
     try {
       const jadwalData = {
         ...formData,
-        waktu_mulai: new Date(formData.waktu_mulai).toISOString(),
-        waktu_selesai: new Date(formData.waktu_selesai).toISOString(),
+        // Tidak perlu konversi waktu karena sekarang hanya format HH:MM
       };
 
       if (jadwal) {
@@ -142,6 +159,34 @@ export default function JadwalForm({ jadwal, onSuccess, onCancel }) {
         </div>
       </div>
 
+      {/* Hari Field */}
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-gray-700">
+          Hari *
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Calendar className="h-5 w-5 text-gray-400" />
+          </div>
+          <select
+            required
+            value={formData.hari}
+            onChange={(e) => setFormData({ ...formData, hari: e.target.value })}
+            className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 appearance-none bg-white"
+          >
+            <option value="">Pilih Hari</option>
+            {hariOptions.map((hari) => (
+              <option key={hari.value} value={hari.value}>
+                {hari.label}
+              </option>
+            ))}
+          </select>
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <div className="w-2 h-2 border-r-2 border-b-2 border-gray-400 transform rotate-45 -translate-y-1"></div>
+          </div>
+        </div>
+      </div>
+
       {/* Waktu Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
@@ -150,15 +195,14 @@ export default function JadwalForm({ jadwal, onSuccess, onCancel }) {
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Calendar className="h-5 w-5 text-gray-400" />
+              <Clock className="h-5 w-5 text-gray-400" />
             </div>
             <input
-              type="datetime-local"
+              type="time"
               required
               value={formData.waktu_mulai}
               onChange={(e) => setFormData({ ...formData, waktu_mulai: e.target.value })}
               className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-              min={new Date().toISOString().slice(0, 16)}
             />
           </div>
         </div>
@@ -172,12 +216,12 @@ export default function JadwalForm({ jadwal, onSuccess, onCancel }) {
               <Clock className="h-5 w-5 text-gray-400" />
             </div>
             <input
-              type="datetime-local"
+              type="time"
               required
               value={formData.waktu_selesai}
               onChange={(e) => setFormData({ ...formData, waktu_selesai: e.target.value })}
               className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-              min={formData.waktu_mulai || new Date().toISOString().slice(0, 16)}
+              min={formData.waktu_mulai}
             />
           </div>
         </div>
@@ -197,7 +241,7 @@ export default function JadwalForm({ jadwal, onSuccess, onCancel }) {
             value={formData.ruangan}
             onChange={(e) => setFormData({ ...formData, ruangan: e.target.value })}
             className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 placeholder-gray-400"
-            placeholder="Contoh: A101, Lab Komputer, Gedung Teknik"
+            placeholder="Contoh: Lab 1, Lab 2, dst..."
           />
         </div>
         <p className="text-xs text-gray-500 mt-1">
@@ -245,6 +289,7 @@ export default function JadwalForm({ jadwal, onSuccess, onCancel }) {
               <li>• Pastikan waktu selesai setelah waktu mulai</li>
               <li>• Pilih dosen yang sudah memiliki sample suara untuk monitoring optimal</li>
               <li>• Sistem akan otomatis memonitoring berdasarkan jadwal yang ditentukan</li>
+              <li>• Format waktu menggunakan 24 jam (contoh: 13:30 untuk jam 1:30 siang)</li>
             </ul>
           </div>
         </div>

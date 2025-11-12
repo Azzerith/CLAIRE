@@ -9,6 +9,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+var validHari = map[string]bool{
+	"SENIN":   true,
+	"SELASA":  true,
+	"RABU":    true,
+	"KAMIS":   true,
+	"JUMAT":   true,
+	"SABTU":   true,
+	"MINGGU":  true,
+}
 
 func BuatJadwal(c *gin.Context) {
 	var jadwal models.Jadwal
@@ -17,9 +26,21 @@ func BuatJadwal(c *gin.Context) {
 		return
 	}
 
-	// Validasi waktu
-	if jadwal.WaktuSelesai.Before(jadwal.WaktuMulai) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Waktu selesai tidak boleh sebelum waktu mulai"})
+	// Validasi hari
+	if !validHari[jadwal.Hari] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Hari tidak valid. Gunakan: SENIN, SELASA, RABU, KAMIS, JUMAT, SABTU, MINGGU"})
+		return
+	}
+
+	// Validasi format waktu (HH:MM)
+	if !isValidTime(jadwal.WaktuMulai) || !isValidTime(jadwal.WaktuSelesai) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format waktu tidak valid. Gunakan format HH:MM"})
+		return
+	}
+
+	// Validasi waktu selesai harus setelah waktu mulai
+	if jadwal.WaktuSelesai <= jadwal.WaktuMulai {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Waktu selesai harus setelah waktu mulai"})
 		return
 	}
 
@@ -34,6 +55,21 @@ func BuatJadwal(c *gin.Context) {
 	db.Preload("Dosen").First(&jadwal, jadwal.ID)
 
 	c.JSON(http.StatusCreated, jadwal)
+}
+
+// Helper function untuk validasi format waktu
+func isValidTime(timeStr string) bool {
+	if len(timeStr) != 5 {
+		return false
+	}
+	if timeStr[2] != ':' {
+		return false
+	}
+	
+	hour := timeStr[0:2]
+	minute := timeStr[3:5]
+	
+	return (hour >= "00" && hour <= "23") && (minute >= "00" && minute <= "59")
 }
 
 func DapatkanSemuaJadwal(c *gin.Context) {

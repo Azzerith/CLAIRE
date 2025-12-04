@@ -38,43 +38,59 @@ export default function DosenList({ dosen, onEdit, onUpdate }) {
       setAudioProgress(0);
       return;
     }
-
+  
     // Jika audio lain sedang diputar, stop dulu
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
-
+  
     if (dosen.path_sample_suara) {
       try {
-        const audioUrl = `http://localhost:8080/api/v1/${dosen.path_sample_suara.split('/').pop()}`;
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
-        
-        // Event listener untuk update progress
-        audio.addEventListener('timeupdate', () => {
-          const progress = (audio.currentTime / audio.duration) * 100;
-          setAudioProgress(progress);
-        });
-
-        // Event listener ketika audio selesai
-        audio.addEventListener('ended', () => {
-          setPlayingAudio(null);
-          setAudioProgress(0);
-          audioRef.current = null;
-        });
-
-        // Event listener untuk error
-        audio.addEventListener('error', () => {
-          setPlayingAudio(null);
-          setAudioProgress(0);
-          audioRef.current = null;
-          alert('Gagal memutar sample suara');
-        });
-
-        setPlayingAudio(dosen.id);
-        await audio.play();
+        // Ekstrak folder dosen dan nama file dari path database
+        const pathParts = dosen.path_sample_suara.split('\\');
+        // Format: sampel_suara\Bagus_ST_MKom\e56a6e9b-fe2b-4c95-84c3-d130efc574e6.wav
+        if (pathParts.length >= 3) {
+          const dosenFolder = pathParts[1]; // Bagus_ST_MKom
+          const filename = pathParts[2]; // e56a6e9b-fe2b-4c95-84c3-d130efc574e6.wav
+          
+          // Buat URL sesuai endpoint yang benar
+          const audioUrl = `http://localhost:8080/api/v1/audio/${dosenFolder}/${filename}`;
+          
+          console.log('Playing audio from:', audioUrl); // Debug log
+          
+          const audio = new Audio(audioUrl);
+          audioRef.current = audio;
+          
+          // Event listener untuk update progress
+          audio.addEventListener('timeupdate', () => {
+            const progress = (audio.currentTime / audio.duration) * 100;
+            setAudioProgress(progress);
+          });
+  
+          // Event listener ketika audio selesai
+          audio.addEventListener('ended', () => {
+            setPlayingAudio(null);
+            setAudioProgress(0);
+            audioRef.current = null;
+          });
+  
+          // Event listener untuk error
+          audio.addEventListener('error', (e) => {
+            console.error('Audio error:', e);
+            setPlayingAudio(null);
+            setAudioProgress(0);
+            audioRef.current = null;
+            alert('Gagal memutar sample suara. Pastikan file tersedia di server.');
+          });
+  
+          setPlayingAudio(dosen.id);
+          await audio.play();
+        } else {
+          alert('Format path file audio tidak valid');
+        }
       } catch (err) {
+        console.error('Error playing audio:', err);
         setPlayingAudio(null);
         setAudioProgress(0);
         audioRef.current = null;
@@ -82,7 +98,6 @@ export default function DosenList({ dosen, onEdit, onUpdate }) {
       }
     }
   };
-
   const stopAudio = () => {
     if (audioRef.current) {
       audioRef.current.pause();
